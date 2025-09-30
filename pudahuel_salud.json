@@ -1,0 +1,109 @@
+{
+  "meta": {
+    "name": "Salud Pudahuel",
+    "scope": "público/municipal + apoyo urgente",
+    "last_verified": "2025-09-30"
+  },
+  "services": [
+    {
+      "id": "cesfam_poniente",
+      "category": "cesfam",
+      "name": "CESFAM Pudahuel Poniente",
+      "description": "Atención primaria. Inscripción por territorio. Pedir hora médica/enfermería, controles y derivaciones.",
+      "eligibility": "Personas adscritas por sectorización en Pudahuel.",
+      "documents": [
+        "Cédula de identidad"
+      ],
+      "steps": [
+        "Llamar o acudir al mesón de atención.",
+        "Solicitar hora indicando motivo general (no detallar datos clínicos).",
+        "Confirmar fecha y llevar carnet el día de la atención."
+      ],
+      "cost": "Bono/cobertura según FONASA/ISAPRE; atenciones primarias sin copago en muchos casos.",
+      "location": {
+        "address": "Av. Federico Errázuriz 620, Pudahuel"
+      },
+      "contact": {
+        "phone": "+56 2 2993 6110",
+        "web": "https://www.codep.cl/"
+      },
+      "hours": "Horario hábil (verifica en el establecimiento)",
+      "booking": {
+        "phone": "+56 2 2993 6110",
+        "notes": "En publicaciones se indica llamado de horas en la mañana; confirmar vigencia."
+      },
+      "notes": "Deriva a SAPU fuera de horario.",
+      "last_verified": "2025-09-30",
+      "sources": [
+        "https://www.superdesalud.gob.cl/registro/centro-de-salud-familiar-pudahuel-poniente/"
+      ]
+    },
+    {
+      "id": "sapu_gmolina",
+      "category": "sapu",
+      "name": "SAPU Dr. Gustavo Molina",
+      "description": "Servicio de Atención Primaria de Urgencia 24 horas.",
+      "eligibility": "Urgencias de baja y mediana complejidad.",
+      "documents": [
+        "Cédula de identidad"
+      ],
+      "steps": [
+        "Acudir al centro (24/7).",
+        "Llevar cédula y antecedentes.",
+        "En casos graves, llamar 131 (SAMU)."
+      ],
+      "cost": "Según previsión (FONASA/ISAPRE).",
+      "location": {
+        "address": "Av. Laguna Sur 8708, Pudahuel"
+      },
+      "contact": {
+        "phone": "+56 2 2749 5991",
+        "email": "sapus@codep.cl",
+        "web": "https://www.codep.cl/"
+      },
+      "hours": "24 horas, continuado",
+      "booking": {
+        "notes": "Atención por orden de llegada y prioridad (triage)."
+      },
+      "notes": "Ubicado en dependencia municipal; confirmaciones por Red Salud Pudahuel.",
+      "last_verified": "2025-09-30",
+      "sources": [
+        "https://www.codep.cl/directory/sapu-gustavo-molina/"
+      ]
+    },
+    {
+      "id": "farmacia_popular",
+      "category": "farmacia",
+      "name": "Farmacia Popular de Pudahuel (Norte / Sur)",
+      "description": "Venta de medicamentos a precio justo para vecinos/as inscritos.",
+      "eligibility": "Vecinos de Pudahuel con inscripción municipal (consultar requisitos).",
+      "documents": [
+        "Cédula de identidad",
+        "Receta vigente si corresponde"
+      ],
+      "steps": [
+        "Revisar cuál sucursal o móvil está operativa hoy.",
+        "Llevar cédula y receta (si aplica).",
+        "Pagar en caja (efectivo/tarjeta)."
+      ],
+      "cost": "Precios con convenio municipal.",
+      "location": {
+        "address": "Norte: Los Ediles 775 · Sur: Puerto Arturo 8261"
+      },
+      "contact": {
+        "web": "https://www.codep.cl/"
+      },
+      "hours": "Variable por sucursal/móvil (ver calendario semanal)",
+      "booking": {
+        "web": "https://www.instagram.com/redsaludpudahuel/",
+        "notes": "Calendarios semanales y avisos."
+      },
+      "notes": "Verificar horarios actualizados en redes de Red Salud Pudahuel.",
+      "last_verified": "2025-09-30",
+      "sources": [
+        "https://www.codep.cl/directory-category/farmacia-municipal/",
+        "https://www.instagram.com/p/C6gZhw-LGkm/"
+      ]
+    }
+  ]
+}
