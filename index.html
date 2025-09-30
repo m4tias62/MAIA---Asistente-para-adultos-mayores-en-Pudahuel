@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MAIA · Asistente Digital (MVP Universal)</title>
+  <meta name="description" content="Asistente por voz para adultos mayores en Chile. Salud, beneficios del Estado, comunicación y más.">
+  <style>
+    :root{
+      --bg:#ffffff; --fg:#111; --mut:#555; --brand:#155e75; --brand-2:#22a3ff;
+      --ok:#1f8a43; --warn:#a16207; --err:#b00020; --card:#fff; --bd:#dadada; --btn:#eef6ff;
+      --radius:20px; --shadow:0 6px 18px rgba(0,0,0,.08);
+      --base:18px;
+    }
+    [data-contrast="high"]{ --bg:#000; --fg:#fff; --mut:#e5e5e5; --card:#000; --bd:#4a4a4a; --btn:#111; }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Inter,Arial,sans-serif; background:var(--bg); color:var(--fg); font-size:var(--base); line-height:1.4}
+    .wrap{max-width:920px; margin:auto; padding:16px}
+    header{display:flex; align-items:center; gap:16px; margin:8px 0 12px}
+    h1{font-size:clamp(24px,4vw,34px); margin:0}
+    .mut{color:var(--mut)}
+    .card{background:var(--card); border:1px solid var(--bd); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px}
+    .row{display:flex; flex-wrap:wrap; gap:12px}
+    .col{flex:1 1 260px}
+    button, .btn{appearance:none; border:1px solid var(--bd); background:var(--btn); border-radius:16px; padding:14px 16px; font-size:1.1rem; cursor:pointer}
+    button:focus-visible{outline:3px solid var(--brand-2)}
+    .primary{background:linear-gradient(180deg, var(--brand-2), #0ea5e9); color:#fff; border:none}
+    .danger{background:#fee2e2; border-color:#fecaca}
+    .ok{background:#e7f6ec; border-color:#b7e4c7}
+    .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px}
+    .avatar{width:120px; height:120px; border-radius:50%; background:radial-gradient(circle at 50% 30%, #fff 0 56%, #c2e9ff 57% 100%); border:3px solid var(--bd); position:relative; margin:8px auto; display:grid; place-items:center}
+    .eye{width:18px; height:22px; background:#111; border-radius:50%}
+    .eyes{display:flex; gap:32px; align-items:center}
+    .mouth{position:absolute; bottom:30px; left:50%; transform:translateX(-50%); width:50px; height:22px; border-bottom:6px solid #222; border-radius:0 0 50px 50px}
+    .asleep .eye{height:4px; border-radius:2px}
+    .asleep .mouth{width:38px; border-bottom-color:#666}
+    .pulse{animation:pulse 2s infinite}
+    @keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.04)}100%{transform:scale(1)}}
+    .controls{display:flex; flex-wrap:wrap; gap:10px}
+    .badges{display:flex; gap:8px; flex-wrap:wrap}
+    .badge{padding:6px 10px; border-radius:999px; border:1px solid var(--bd); font-size:.95rem}
+    .live{min-height:44px; padding:10px; background:#f7fafc; border:1px dashed var(--bd); border-radius:12px}
+    .chat{display:flex; flex-direction:column; gap:10px; max-height:300px; overflow:auto}
+    .bubble{padding:12px 14px; border-radius:16px; max-width:100%;}
+    .me{background:#e0f2fe; align-self:flex-end}
+    .maia{background:#f1f5f9; align-self:flex-start}
+    .prefs{display:flex; gap:14px; align-items:center}
+    .slider{width:180px}
+    .sr-only{position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden}
+    a.tel, a.ext{color:inherit}
+  </style>
+</head>
+<body>
+  <div class="wrap" id="app">
+    <header>
+      <div id="avatar" class="avatar asleep" aria-hidden="true">
+        <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
+        <div class="mouth"></div>
+      </div>
+      <div>
+        <h1>MAIA · Asistente Digital</h1>
+        <div class="mut">Voz simple para ayudar en tareas digitales: salud, beneficios, comunicación y más.</div>
+        <div class="badges" aria-label="Estado">
+          <div class="badge" id="asrBadge">🎤 Dictado: revisando…</div>
+          <div class="badge" id="ttsBadge">🗣️ Voz: revisando…</div>
+        </div>
+      </div>
+    </header>
+
+    <section class="card" aria-labelledby="t-intro">
+      <h2 id="t-intro">Bienvenida</h2>
+      <p>Hola, soy MAIA. Dime qué necesitas y te guío <strong>paso a paso</strong>. Ejemplos: <em>pedir hora en el CESFAM</em>, <em>calendario de vacunación</em>, <em>comunicarme por WhatsApp</em>, <em>recuperar contraseña</em>, <em>pagar una cuenta</em>. Si quieres, toca <strong>Repetir</strong> y lo digo de nuevo.</p>
+      <div class="controls">
+        <button class="primary" id="btnStart">Iniciar</button>
+        <button id="btnSpeak">Hablar</button>
+        <button id="btnRepeat">Repetir</button>
+        <button class="danger" id="btnStop">Parar</button>
+      </div>
+      <div class="prefs" style="margin-top:12px">
+        <label for="fontRange">Tamaño de letra</label>
+        <input id="fontRange" class="slider" type="range" min="16" max="26" value="18" step="1" aria-valuemin="16" aria-valuemax="26" aria-valuenow="18" aria-label="Tamaño de letra" />
+        <button id="btnContrast" aria-pressed="false">Alto contraste</button>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="t-atajos">
+      <h2 id="t-atajos">Atajos</h2>
+      <div class="grid" id="shortcuts">
+        <button data-prompt="Quiero pedir una hora en el CESFAM">Salud · Pedir hora CESFAM</button>
+        <button data-prompt="¿Dónde veo el calendario de vacunación?">Salud · Vacunación</button>
+        <button data-prompt="Quiero hablar con mi familia por WhatsApp">Comunicación · WhatsApp</button>
+        <button data-prompt="No recuerdo mi contraseña, ¿cómo la recupero?">Trámite · Recuperar contraseña</button>
+        <button data-prompt="Quiero pagar mi cuenta de luz desde el celular">Trámite · Pagar cuenta</button>
+        <button data-prompt="¿Cómo postulo a un beneficio del Estado?">Beneficios del Estado</button>
+      </div>
+      <p class="mut">Consejo: puedes hablar o tocar un atajo. Siempre te doy el <strong>siguiente paso</strong> y la opción de ayuda humana.</p>
+    </section>
+
+    <section class="card" aria-labelledby="t-conv">
+      <h2 id="t-conv">Conversación</h2>
+      <div id="live" class="live" role="status" aria-live="polite"></div>
+      <div class="chat" id="chatlog" aria-label="Mensajes"></div>
+      <label for="text" class="sr-only">Escribe tu pregunta</label>
+      <div class="row" style="margin-top:10px">
+        <input id="text" class="col" type="text" placeholder="Escribe si prefieres (ej.: ‘Quiero pedir una hora en el CESFAM’)" />
+        <button id="btnSend" class="col" style="max-width:200px">Enviar</button>
+      </div>
+    </section>
+
+    <footer class="mut" style="margin:16px 4px">Última actualización: 30-09-2025 · Informativo. Sin diagnósticos, sin guardar datos personales.</footer>
+  </div>
+
+  <script>
+    const st = { speaking:false, listening:false, voices:[], esVoice:null, auto: new URLSearchParams(location.search).get('auto') === '1' };
+    const el = (id)=>document.getElementById(id);
+    const avatar = el('avatar');
+
+    function setAvatar(active){ avatar.classList.toggle('asleep', !active); avatar.classList.toggle('pulse', active); }
+    function live(text){ el('live').textContent = text; }
+    function push(who, text){ const div=document.createElement('div'); div.className = 'bubble ' + (who==='me'?'me':'maia'); div.textContent=text; el('chatlog').appendChild(div); el('chatlog').scrollTop = el('chatlog').scrollHeight; }
+
+    el('fontRange').addEventListener('input', (e)=>{ document.documentElement.style.setProperty('--base', e.target.value+'px'); e.target.setAttribute('aria-valuenow', e.target.value) });
+    el('btnContrast').addEventListener('click', (e)=>{ const on = document.body.getAttribute('data-contrast')==='high'; document.body.setAttribute('data-contrast', on?'':'high'); e.currentTarget.setAttribute('aria-pressed', (!on)+""); });
+
+    function loadVoices(){ st.voices = window.speechSynthesis?.getVoices?.() || []; st.esVoice = st.voices.find(v=>/es-(CL|MX|ES|US)/i.test(v.lang)) || st.voices[0] || null; el('ttsBadge').textContent = st.esVoice? `🗣️ Voz: ${st.esVoice.name}` : '🗣️ Voz: no disponible'; }
+    loadVoices(); if (speechSynthesis) speechSynthesis.onvoiceschanged = loadVoices;
+
+    function speak(text){ if(!window.speechSynthesis){ live('La voz no está disponible.'); return; } const msg = new SpeechSynthesisUtterance(text); if(st.esVoice) msg.voice = st.esVoice; msg.lang = st.esVoice?.lang || 'es-CL'; st.speaking = true; setAvatar(true); speechSynthesis.cancel(); speechSynthesis.speak(msg); msg.onend = ()=>{ st.speaking = false; setAvatar(false); } }
+
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition; let rec = null; if(SR){ rec = new SR(); rec.lang='es-CL'; rec.interimResults=false; rec.maxAlternatives=1; el('asrBadge').textContent='🎤 Dictado: disponible'; } else { el('asrBadge').textContent='🎤 Dictado: no disponible'; }
+    function listen(){ if(!rec){ live('El dictado no está disponible en este dispositivo. Puedes escribir.'); return; } rec.start(); setAvatar(true); rec.onresult=(e)=>{ const txt=(e.results[0] && e.results[0][0] && e.results[0][0].transcript)||''; push('me', txt); handleQuery(txt); }; rec.onend=()=> setAvatar(false); }
+
+    async function askLLM(input){
+      try{
+        const ctrl = new AbortController(); const t = setTimeout(()=>ctrl.abort(), 4000);
+        const res = await fetch('/api/ask', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ input_text: input, user_locale:'es-CL', channel:'voice' }), signal:ctrl.signal});
+        clearTimeout(t);
+        if(res.ok){ return await res.json(); }
+      }catch(e){}
+      return mockAnswer(input);
+    }
+
+    function categoryOf(q){
+      q = (q||'').toLowerCase();
+      if(/cesfam|vacun|examen|sapu|receta|medic/i.test(q)) return 'salud';
+      if(/beneficio|subsidio|bono|pensión|chileatiende|estado/i.test(q)) return 'beneficios';
+      if(/whatsapp|llamar|videollamada|mensaje|foto|familia/i.test(q)) return 'comunicacion';
+      if(/contraseña|password|cuenta|pagar|boleta|luz|agua|internet|recuperar/i.test(q)) return 'tramites';
+      return 'general';
+    }
+
+    function mockAnswer(input){
+      const cat = categoryOf(input);
+      if(cat==='salud'){
+        return { type:'steps', say:'Puedo ayudarte en salud: pedir hora en el CESFAM, ver calendario de vacunación o ubicar un SAPU. ¿Con cuál partimos?', suggestions:['Pedir hora CESFAM','Ver vacunación','Buscar SAPU'] };
+      } else if(cat==='beneficios'){
+        return { type:'steps', say:'Para beneficios del Estado: define si es pensión, subsidio o bono. Te guío con pasos y dónde revisar requisitos.', suggestions:['Pensión','Subsidio','Bono'] };
+      } else if(cat==='comunicacion'){
+        return { type:'steps', say:'Para comunicarte: ¿enviar WhatsApp, hacer videollamada o compartir una foto? Te guío paso a paso.', suggestions:['Enviar WhatsApp','Videollamar','Compartir foto'] };
+      } else if(cat==='tramites'){
+        return { type:'steps', say:'Para trámites digitales: recuperar contraseña o pagar una cuenta desde el celular. ¿Cuál necesitas?', suggestions:['Recuperar contraseña','Pagar cuenta','Otro'] };
+      }
+      return { type:'info', say:'Soy MAIA. Puedo ayudarte con salud, beneficios, comunicación y trámites. Dime con qué partimos.', suggestions:['Salud','Beneficios','Comunicación','Trámites'] };
+    }
+
+    async function handleQuery(txt){
+      live('Pensando…'); const res = await askLLM(txt); live(''); push('maia', res.say); speak(res.say); showSuggestions(res.suggestions||[]);
+    }
+
+    function showSuggestions(list){ const box = document.createElement('div'); box.className='row'; list.forEach((s)=>{ const b=document.createElement('button'); b.textContent=s; b.addEventListener('click',()=>{ push('me', s); handleQuery(s); }); box.appendChild(b); }); el('chatlog').appendChild(box); el('chatlog').scrollTop = el('chatlog').scrollHeight; }
+
+    document.getElementById('btnStart').onclick = ()=>{ const t='Hola, soy MAIA. ¿Qué necesitas hoy: salud, beneficios, comunicación o trámites?'; push('maia', t); speak(t); };
+    document.getElementById('btnSpeak').onclick = ()=> listen();
+    document.getElementById('btnRepeat').onclick = ()=>{ const last=[...document.querySelectorAll('.bubble.maia')].pop(); if(last) speak(last.textContent); };
+    document.getElementById('btnStop').onclick = ()=>{ try{ window.speechSynthesis.cancel(); }catch(e){} };
+    document.getElementById('btnSend').onclick = ()=>{ const v=document.getElementById('text').value.trim(); if(!v) return; push('me', v); document.getElementById('text').value=''; handleQuery(v); };
+    document.getElementById('shortcuts').addEventListener('click', (e)=>{ const p=e.target.getAttribute('data-prompt'); if(!p) return; push('me', p); handleQuery(p); });
+
+    window.addEventListener('load', ()=>{ if(st.auto){ document.getElementById('btnStart').click(); } });
+  </script>
+</body>
+</html>
