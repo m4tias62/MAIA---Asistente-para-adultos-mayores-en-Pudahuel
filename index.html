@@ -129,9 +129,9 @@
         <circle class="ring" cx="100" cy="100" r="80"></circle>
         <!-- cara -->
         <circle cx="100" cy="100" r="70" fill="#f7fbff" stroke="#cfe7ff" stroke-width="4"/>
-        <!-- ojos (simétricos) -->
-        <path id="eyeL" class="eyes eye" d="M 70 90 q 15 8 30 0" stroke="#0b3a66" stroke-width="6" fill="none" stroke-linecap="round"/>
-        <path id="eyeR" class="eyes eye" d="M 130 90 q -15 8 -30 0" stroke="#0b3a66" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <!-- ojos (cerrados por defecto, con SEPARACIÓN constante) -->
+        <path id="eyeL" class="eyes eye" d="M 70 90 q 10 8 20 0" stroke="#0b3a66" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <path id="eyeR" class="eyes eye" d="M 110 90 q 10 8 20 0" stroke="#0b3a66" stroke-width="6" fill="none" stroke-linecap="round"/>
         <!-- boca -->
         <path id="mouth" class="mouth" d="M 70 125 Q 100 115 130 125" stroke="#0b3a66" stroke-width="6" fill="none" stroke-linecap="round"/>
         <!-- Zzz -->
@@ -226,9 +226,9 @@ function faceSleep(){
   document.body.classList.remove('face-active');
   document.body.classList.add('face-idle');
   zzz.style.opacity = 1;
-  // ojos cerrados (simétricos)
-  eyeL.setAttribute('d','M 70 90 q 15 8 30 0');
-  eyeR.setAttribute('d','M 130 90 q -15 8 -30 0');
+  // ojos cerrados con separación constante: izq 70→90, der 110→130
+  eyeL.setAttribute('d','M 70 90 q 10 8 20 0');
+  eyeR.setAttribute('d','M 110 90 q 10 8 20 0');
   // boca neutra
   mouth.setAttribute('d','M 70 125 Q 100 115 130 125');
   faceAwake = false;
@@ -238,7 +238,7 @@ function faceHappy(){
   document.body.classList.remove('face-idle');
   document.body.classList.add('face-active');
   zzz.style.opacity = 0;
-  // ojos abiertos (simétricos)
+  // ojos abiertos (mantienen la misma separación visual)
   eyeL.setAttribute('d','M 70 78 a 14 12 0 1 0 0.01 0');
   eyeR.setAttribute('d','M 130 78 a 14 12 0 1 0 0.01 0');
   // sonrisa
@@ -402,3 +402,4 @@ setStatus('idle','En reposo. Toca “Iniciar” o haz una pregunta.');
 </script>
 </body>
 </html>
+
