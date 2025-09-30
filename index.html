@@ -1,405 +1,76 @@
 <!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>MAIA · Salud Pudahuel (MVP)</title>
-<meta name="description" content="Asistente de trámites de salud en Pudahuel para personas mayores. Voz + acompañamiento visual.">
-<style>
-  :root{
-    --bg:#ffffff; --fg:#111; --mut:#666; --brand:#1b5e9a; --brand-2:#3aa1ff;
-    --ok:#1f8a43; --warn:#d68600; --err:#b00020; --card:#fff; --bd:#e5e5e5;
-    --btn:#eef6ff;
-    --base-font:18px;
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
-    background:var(--bg); color:var(--fg); font-size:var(--base-font);
-  }
-  header{
-    position:sticky; top:0; z-index:5;
-    background:linear-gradient(180deg,#f8fbff,#fff);
-    border-bottom:1px solid var(--bd); padding:12px 16px;
-  }
-  .row{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
-  h1{font-size:1.4rem; margin:0}
-  .sub{color:var(--mut); font-size:0.95rem}
-  main{max-width:920px; margin:0 auto; padding:12px 16px 80px}
-  .grid{display:grid; grid-template-columns:1fr; gap:12px}
-  @media(min-width:900px){ .grid{grid-template-columns:360px 1fr} }
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition; let rec = null; if(SR){ rec = new SR(); rec.lang='es-CL'; rec.interimResults=false; rec.maxAlternatives=1; el('asrBadge').textContent='🎤 Dictado: disponible'; } else { el('asrBadge').textContent='🎤 Dictado: no disponible'; }
 
-  .card{
-    border:1px solid var(--bd); border-radius:16px; background:var(--card); padding:12px;
-  }
 
-  /* Avatar panel */
-  .avatar-wrap{
-    display:flex; flex-direction:column; gap:12px; align-items:center; justify-content:center;
-    padding:12px;
-  }
-  .state{font-size:0.95rem; color:var(--mut)}
-  .badges{display:flex; gap:6px; flex-wrap:wrap; justify-content:center}
-  .badge{
-    padding:6px 10px; border-radius:999px; border:1px solid var(--bd); background:#fafafa; font-size:0.9rem;
-  }
-  .controls{display:flex; gap:8px; flex-wrap:wrap}
-  button, .pill, input, textarea, select{
-    font-size:1rem; padding:12px 14px; border-radius:12px; border:1px solid var(--bd);
-  }
-  button{ background:var(--btn); border-color:#cfe; cursor:pointer }
-  button:active{ transform:scale(0.98) }
-  .pill{ background:#f7f7f7; cursor:pointer; display:inline-block }
-  .wide{ width:100% }
+function listen(){ if(!rec){ live('El dictado no está disponible en este dispositivo. Puedes escribir.'); return; } rec.start(); st.listening=true; setAvatar(true); rec.onresult=(e)=>{ const txt = (e.results[0] && e.results[0][0] && e.results[0][0].transcript)||''; push('me', txt); handleQuery(txt); }; rec.onend=()=>{ st.listening=false; setAvatar(false); } }
 
-  /* Chat */
-  .chat{ display:flex; flex-direction:column; gap:10px; padding:8px; max-height:55vh; overflow:auto }
-  .msg{ padding:12px 14px; border-radius:14px; max-width:85%; border:1px solid var(--bd); line-height:1.4 }
-  .me{ align-self:flex-end; background:#f2f7ff; border-color:#cfe }
-  .bot{ align-self:flex-start; background:#fafafa }
-  .hint{ color:var(--mut); font-size:0.9rem }
 
-  /* Footer dock */
-  .dock{
-    position:fixed; bottom:0; left:0; right:0; z-index:6;
-    background:#fff; border-top:1px solid var(--bd); padding:10px 12px;
-  }
+// UI
+function setAvatar(active){ avatar.classList.toggle('asleep', !active); avatar.classList.toggle('pulse', active); }
+function push(who, text){ const div=document.createElement('div'); div.className = 'bubble ' + (who==='me'?'me':'maia'); div.textContent=text; el('chatlog').appendChild(div); el('chatlog').scrollTop = el('chatlog').scrollHeight; }
+function live(text){ el('live').textContent = text; }
 
-  /* Accessibility toggles */
-  .a11y{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
-  .contrast-on{ --bg:#0b0b0b; --fg:#fff; --mut:#bdbdbd; --card:#121212; --bd:#333; --btn:#17324d }
 
-  /* SVG Avatar */
-  .svg-wrap{ width:200px; height:200px; position:relative }
-  svg{ width:100%; height:100% }
-  .ring{
-    fill:none; stroke:#cfe7ff; stroke-width:10; stroke-linecap:round;
-    transform-origin:50% 50%;
-    opacity:.9;
-  }
-  .pulse { animation:pulse 1.2s ease-in-out infinite }
-  @keyframes pulse{
-    0%{ transform:scale(1); opacity:.6 }
-    50%{ transform:scale(1.06); opacity:1 }
-    100%{ transform:scale(1); opacity:.6 }
-  }
-  .eyes, .mouth, .zzz{ transition: .2s ease }
-  .zzz{ font: bold 18px/1 Arial, sans-serif; fill:#7aa7d9; opacity:0 }
-  /* States: idle(sleep), listening, thinking, speaking */
-  .face-idle .zzz{ opacity:1 }
-  .face-idle .mouth{ d:path("M 70 125 Q 100 115 130 125") } /* boca neutra */
-  .face-active .mouth{ d:path("M 70 125 Q 100 150 130 125") } /* sonrisa */
-
-  .status{
-    display:flex; gap:8px; align-items:center; justify-content:center; color:var(--mut);
-    font-size:0.95rem;
-  }
-  .dot{ width:10px; height:10px; border-radius:50%; background:#ccc }
-  .s-listening .dot{ background:#3aa1ff }
-  .s-thinking .dot{ background:#f0b400 }
-  .s-speaking .dot{ background:#1f8a43 }
-
-  .sr-only{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}
-</style>
-</head>
-<body>
-<header id="hdr">
-  <div class="row" style="justify-content:space-between">
-    <div>
-      <h1>MAIA · Salud Pudahuel</h1>
-      <div class="sub">Acompañamiento por voz para trámites de salud (MVP)</div>
-    </div>
-    <div class="a11y">
-      <button id="fontPlus" title="Aumentar tamaño de texto">A+</button>
-      <button id="fontMinus" title="Disminuir tamaño de texto">A−</button>
-      <button id="contrast" title="Alto contraste">Alto contraste</button>
-    </div>
-  </div>
-</header>
-
-<main class="grid">
-  <!-- Columna izquierda: avatar y estado -->
-  <section class="card avatar-wrap" aria-labelledby="avatarTitle">
-    <h2 id="avatarTitle" class="sr-only">Estado del asistente</h2>
-    <div class="svg-wrap">
-      <!-- Avatar SVG -->
-      <svg viewBox="0 0 200 200" aria-hidden="true">
-        <!-- anillo -->
-        <circle class="ring" cx="100" cy="100" r="80"></circle>
-        <!-- cara -->
-        <circle cx="100" cy="100" r="70" fill="#f7fbff" stroke="#cfe7ff" stroke-width="4"/>
-        <!-- ojos (cerrados por defecto, con SEPARACIÓN constante) -->
-        <path id="eyeL" class="eyes eye" d="M 70 90 q 10 8 20 0" stroke="#0b3a66" stroke-width="6" fill="none" stroke-linecap="round"/>
-        <path id="eyeR" class="eyes eye" d="M 110 90 q 10 8 20 0" stroke="#0b3a66" stroke-width="6" fill="none" stroke-linecap="round"/>
-        <!-- boca -->
-        <path id="mouth" class="mouth" d="M 70 125 Q 100 115 130 125" stroke="#0b3a66" stroke-width="6" fill="none" stroke-linecap="round"/>
-        <!-- Zzz -->
-        <text id="zzz" class="zzz" x="145" y="60">Z z z</text>
-      </svg>
-    </div>
-
-    <div id="statusLine" class="status s-idle">
-      <div class="dot"></div><span id="statusText">En reposo. Toca “Iniciar” o haz una pregunta.</span>
-    </div>
-    <div class="controls" style="justify-content:center">
-      <button id="startBtn">Iniciar</button>
-      <button id="micBtn">🎤 Hablar</button>
-      <button id="repeatBtn">🔁 Repetir</button>
-      <button id="stopBtn">⏹️ Parar</button>
-    </div>
-    <div class="badges">
-      <span class="badge" id="ttsBadge">Voz: <b>OK</b></span>
-      <span class="badge" id="asrBadge">Dictado: <b>—</b></span>
-    </div>
-    <div class="hint">Mantén pulsado el encabezado 1 seg. para abrir <b>Modo Operador</b>.</div>
-  </section>
-
-  <!-- Columna derecha: chat e interacción -->
-  <section class="card" aria-labelledby="chatTitle">
-    <h2 id="chatTitle" class="sr-only">Conversación</h2>
-    <div class="chat" id="chat" aria-live="polite"></div>
-
-    <div class="row" style="margin-top:10px">
-      <input id="q" class="wide" type="text" inputmode="latin" placeholder="Ej.: ¿Cómo pido hora en el CESFAM?"/>
-      <button id="askBtn">Preguntar</button>
-    </div>
-
-    <div class="row" style="margin-top:8px; flex-wrap:wrap">
-      <span class="pill" onclick="prefill('Pedir hora en CESFAM')">🩺 Pedir hora CESFAM</span>
-      <span class="pill" onclick="prefill('Vacunación para adultos mayores')">💉 Vacunación</span>
-      <span class="pill" onclick="prefill('Farmacia comunal requisitos')">💊 Farmacia comunal</span>
-      <span class="pill" onclick="prefill('Resultados de exámenes')">🧪 Exámenes</span>
-      <span class="pill" onclick="prefill('Urgencia SAPU cercano')">🚑 Urgencia / SAPU</span>
-      <a class="pill" href="tel:131" onclick="speak('Llamando a emergencia 131 si corresponde.');">📞 Emergencia 131</a>
-    </div>
-  </section>
-</main>
-
-<!-- Modo Operador -->
-<section id="op" class="card" style="max-width:920px;margin:12px auto; display:none">
-  <div class="hint"><b>Modo Operador:</b> pega aquí una respuesta “real” y pulsa Inyectar. La app la leerá con voz.</div>
-  <textarea id="opText" class="wide" rows="6" placeholder="Pega aquí la respuesta que quieras que MAIA diga..."></textarea>
-  <div class="row" style="margin-top:8px">
-    <button onclick="inject()">Inyectar respuesta</button>
-    <button onclick="toggleOp(false)">Cerrar</button>
-  </div>
-</section>
-
-<!-- Dock inferior -->
-<div class="dock row" style="justify-content:space-between">
-  <div class="hint">MVP sin backend: las respuestas son simuladas. En la versión final, el tap NFC abrirá esta misma web y MAIA consultará una IA entrenada en salud Pudahuel.</div>
-  <div class="row">
-    <a class="pill" href="https://telesalud.gob.cl/" target="_blank" onclick="speak('Abriendo Telesalud.');">🌐 Telesalud</a>
-    <a class="pill" href="tel:6003607777" onclick="speak('Llamando a Salud Responde 600 360 7777.');">📞 Salud Responde</a>
-  </div>
-</div>
-
-<script>
-/* ========= Estado del Avatar y accesibilidad ========= */
-const statusText = document.getElementById('statusText');
-const statusLine = document.getElementById('statusLine');
-const ring = document.querySelector('.ring');
-const mouth = document.getElementById('mouth');
-const eyeL = document.getElementById('eyeL');
-const eyeR = document.getElementById('eyeR');
-const zzz = document.getElementById('zzz');
-
-let idleTimer = null;
-let avatarMode = 'idle'; // idle | listening | thinking | speaking
-let faceAwake = false;
-
-function setStatus(mode, msg){
-  avatarMode = mode;
-  statusLine.className = 'status s-' + mode;
-  statusText.textContent = msg;
-  if (mode==='idle'){
-    faceSleep();
-  } else {
-    faceHappy();
-  }
-  ring.classList.toggle('pulse', ['listening','thinking','speaking'].includes(mode));
-  resetIdleCountdown();
+// Router simple: intenta /api/ask y cae a mock local
+async function askLLM(input){
+try{
+const ctrl = new AbortController(); const t = setTimeout(()=>ctrl.abort(), 3000);
+const res = await fetch('/api/ask', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ input_text: input, user_locale:'es-CL', channel:'voice' }), signal:ctrl.signal});
+clearTimeout(t);
+if(res.ok){ return await res.json(); }
+}catch(err){}
+return mockAnswer(input);
 }
 
-function faceSleep(){
-  document.body.classList.remove('face-active');
-  document.body.classList.add('face-idle');
-  zzz.style.opacity = 1;
-  // ojos cerrados con separación constante: izq 70→90, der 110→130
-  eyeL.setAttribute('d','M 70 90 q 10 8 20 0');
-  eyeR.setAttribute('d','M 110 90 q 10 8 20 0');
-  // boca neutra
-  mouth.setAttribute('d','M 70 125 Q 100 115 130 125');
-  faceAwake = false;
-}
 
-function faceHappy(){
-  document.body.classList.remove('face-idle');
-  document.body.classList.add('face-active');
-  zzz.style.opacity = 0;
-  // ojos abiertos (mantienen la misma separación visual)
-  eyeL.setAttribute('d','M 70 78 a 14 12 0 1 0 0.01 0');
-  eyeR.setAttribute('d','M 130 78 a 14 12 0 1 0 0.01 0');
-  // sonrisa
-  mouth.setAttribute('d','M 70 125 Q 100 150 130 125');
-  faceAwake = true;
-}
-
-function resetIdleCountdown(){
-  if (idleTimer) clearTimeout(idleTimer);
-  idleTimer = setTimeout(()=> setStatus('idle','En reposo. Toca “Iniciar” o haz una pregunta.'), 15000);
-}
-
-/* ========= TTS (texto a voz) ========= */
-let lastSpoken = '';
-function getEsVoice(){
-  const vs = speechSynthesis.getVoices();
-  return vs.find(v=> v.lang && v.lang.toLowerCase().startsWith('es')) || null;
-}
-function speak(text){
-  if (!('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  const v = getEsVoice();
-  if (v) u.voice = v;
-  u.rate = 0.95; u.pitch = 1; u.volume = 1;
-  u.onstart = ()=> setStatus('speaking','Hablando…');
-  u.onend = ()=> setStatus('idle','Listo. ¿Otra consulta?');
-  lastSpoken = text;
-  speechSynthesis.speak(u);
-}
-function repeat(){ if(lastSpoken) speak(lastSpoken); }
-function stopSpeech(){ if('speechSynthesis' in window) speechSynthesis.cancel(); setStatus('idle','Voz detenida.'); }
-
-/* ========= ASR (dictado) opcional ========= */
-let rec = null;
-(function initASR(){
-  try{
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SR){
-      rec = new SR();
-      rec.lang = 'es-ES';
-      rec.interimResults = false;
-      rec.maxAlternatives = 1;
-      rec.onstart = ()=> setStatus('listening','Escuchando… habla ahora');
-      rec.onerror = ()=> setStatus('idle','No se entendió, ¿puedes repetir?');
-      rec.onnomatch = ()=> setStatus('idle','No se entendió, ¿puedes repetir?');
-      rec.onend = ()=> { if(avatarMode==='listening') setStatus('idle','Listo.'); };
-      rec.onresult = (e)=>{
-        const text = e.results[0][0].transcript;
-        document.getElementById('q').value = text;
-        ask();
-      };
-      document.getElementById('asrBadge').innerHTML = 'Dictado: <b>OK</b>';
-    } else {
-      document.getElementById('micBtn').disabled = true;
-      document.getElementById('asrBadge').innerHTML = 'Dictado: <b>No disponible</b>';
-    }
-  }catch(e){
-    document.getElementById('micBtn').disabled = true;
-    document.getElementById('asrBadge').innerHTML = 'Dictado: <b>No disponible</b>';
-  }
-  document.getElementById('ttsBadge').innerHTML = 'Voz: <b>' + (('speechSynthesis' in window)?'OK':'No disponible') + '</b>';
-})();
-
-/* ========= Chat básico ========= */
-const chat = document.getElementById('chat');
-function addMsg(text, who){
-  const div = document.createElement('div');
-  div.className = 'msg ' + (who==='me'?'me':'bot');
-  div.textContent = text;
-  chat.appendChild(div);
-  chat.scrollTop = chat.scrollHeight;
-}
-
-/* ========= Mock de IA (sustituirás por backend) ========= */
-function mockAI(q){
-  const p = (q||'').toLowerCase();
-  if (p.includes('cesfam') || p.includes('hora') || p.includes('cita')){
-    return "Para pedir hora en tu CESFAM de Pudahuel: 1) Ten a mano tu RUT. 2) Elige si prefieres teléfono o web. 3) Si es por web, te puedo guiar abriendo el portal correspondiente. Si prefieres, también podemos llamar para agendar.";
-  }
-  if (p.includes('vacun') ){
-    return "Vacunación en Pudahuel: te indico el punto más cercano y horario. Antes de ir, podemos llamar para confirmar stock. Si tienes 65 o más, recuerda que influenza y neumococo son prioritarias.";
-  }
-  if (p.includes('farmacia')){
-    return "Farmacia comunal: necesitas estar inscrito o acreditar domicilio/vínculo en Pudahuel y llevar receta vigente. Te indico horarios y cómo cotizar tu medicamento.";
-  }
-  if (p.includes('examen')){
-    return "Resultados de exámenes: dime en qué centro te los tomaste. Te muestro el enlace y cómo entrar con tu RUT. Si olvidaste la clave, te explico cómo recuperarla paso a paso.";
-  }
-  if (p.includes('sapu') || p.includes('urgenc')){
-    return "Si hay síntomas graves, llama al 131 de inmediato. Para urgencia menor, te indico el SAPU más cercano con su horario y cómo llegar.";
-  }
-  return "Puedo orientarte en trámites de salud en Pudahuel: pedir hora en CESFAM, vacunación, farmacia comunal, resultados de exámenes y urgencia/SAPU. ¿Qué necesitas hoy?";
-}
-
-/* ========= Flujo principal ========= */
-const qEl = document.getElementById('q');
-function ask(){
-  const text = (qEl.value||'').trim();
-  if (!text) { setStatus('idle','¿Qué te gustaría consultar?'); return; }
-  addMsg(text,'me'); qEl.value='';
-  setStatus('thinking','Pensando…');
-  // Simula latencia de IA
-  setTimeout(()=>{
-    const reply = mockAI(text);
-    addMsg(reply,'bot');
-    speak(reply);
-  }, 500);
-}
-
-function prefill(t){ qEl.value = t; ask(); }
-
-/* ========= Controles ========= */
-document.getElementById('startBtn').onclick = ()=>{
-  faceHappy();
-  setStatus('idle','Hola, soy MAIA. ¿En qué te ayudo hoy?');
-  speak('Hola. Soy MAIA, tu asistente de salud en Pudahuel. ¿En qué te ayudo hoy?');
+// Mock local con KB mínima embebida (3 ejemplos)
+const KB = {
+cesfam_poniente: { name:'CESFAM Pudahuel Poniente', address:'Av. Federico Errázuriz 620, Pudahuel', phone:'+56 2 2993 6110' },
+sapu_gmolina: { name:'SAPU Dr. Gustavo Molina', address:'Av. Laguna Sur 8708, Pudahuel', phone:'+56 2 2749 5991', hours:'24 horas' },
+farmacia_popular: { name:'Farmacia Popular (Norte/Sur)', address:'Norte: Los Ediles 775 · Sur: Puerto Arturo 8261', note:'Horarios pueden variar. Verifica en Red Salud Pudahuel.' }
 };
-document.getElementById('askBtn').onclick = ask;
-document.getElementById('micBtn').onclick = ()=>{ if(rec){ rec.start(); } else { alert('Tu navegador no soporta dictado. Usa el teclado.'); }};
-document.getElementById('repeatBtn').onclick = repeat;
-document.getElementById('stopBtn').onclick = stopSpeech;
 
-/* ========= Modo Operador (pulsación larga en header) ========= */
-let holdT=null;
-const hdr = document.getElementById('hdr');
-hdr.addEventListener('pointerdown', ()=>{ holdT = setTimeout(()=> toggleOp(true), 800); });
-hdr.addEventListener('pointerup', ()=> clearTimeout(holdT));
-function toggleOp(open){
-  const el = document.getElementById('op');
-  el.style.display = (open===true) ? 'block' : (open===false ? 'none' : (el.style.display==='none'?'block':'none'));
+
+function mockAnswer(input){
+const q = (input||'').toLowerCase();
+if(q.includes('cesfam') || q.includes('hora')){
+return { type:'steps', say:`Para pedir hora en ${KB.cesfam_poniente.name}: 1) Ten a mano tu carnet. 2) Llama en horario hábil o acércate al mesón. Dirección: ${KB.cesfam_poniente.address}. Teléfono: ${KB.cesfam_poniente.phone}. ¿Te dicto el número o te muestro un botón para llamar?`, suggestions:['Llamar ahora','Cómo llegar','Otra consulta'] };
 }
-function inject(){
-  const t = document.getElementById('opText').value.trim();
-  if(!t) return;
-  addMsg(t,'bot'); speak(t);
-  document.getElementById('opText').value='';
+if(q.includes('vacun')){
+return { type:'info', say:'Los puntos de vacunación cambian por semana. Te puedo leer los lugares activos hoy o te muestro el botón para revisar el calendario comunal.', suggestions:['Leer opciones','Abrir calendario','Otra consulta'] };
+}
+if(q.includes('farmacia')){
+return { type:'info', say:`Farmacia Comunal: ${KB.farmacia_popular.address}. Te puedo dar las indicaciones o abrir el mapa.`, suggestions:['Cómo llegar','¿Horarios?','Otra consulta'] };
+}
+if(q.includes('sapu')){
+return { type:'info', say:`SAPU de urgencia cercano: ${KB.sapu_gmolina.name}, ${KB.sapu_gmolina.address}. Atención ${KB.sapu_gmolina.hours}. ¿Quieres llamar?`, suggestions:['Llamar SAPU','Cómo llegar','Otra consulta'] };
+}
+if(q.includes('examen')){
+return { type:'steps', say:'Para exámenes: 1) Revisa tu orden médica. 2) Consulta disponibilidad en tu CESFAM o laboratorio indicado. Puedo abrir búsqueda o darte teléfonos del CESFAM.', suggestions:['Teléfono CESFAM','Buscar laboratorio','Otra consulta'] };
+}
+return { type:'info', say:'Puedo ayudarte con salud en Pudahuel: pedir hora, vacunas, farmacia comunal, SAPU y exámenes. Dime qué necesitas y te guío paso a paso.', suggestions:['Pedir hora CESFAM','Vacunación','Farmacia Comunal'] };
 }
 
-/* ========= Parámetros de URL (por si el QR trae ?pregunta=) ========= */
-(function readURL(){
-  const u = new URL(location.href);
-  const p = u.searchParams.get('pregunta');
-  const autostart = u.searchParams.get('auto');
-  if (autostart==='1'){ faceHappy(); setStatus('idle','Hola, ¿en qué te ayudo hoy?'); speak('Hola, ¿en qué te ayudo hoy?'); }
-  if (p){ qEl.value = decodeURIComponent(p); ask(); }
-})();
 
-/* ========= A11y: tamaño de letra y contraste ========= */
-const fontPlus = document.getElementById('fontPlus');
-const fontMinus = document.getElementById('fontMinus');
-const contrast = document.getElementById('contrast');
-let fontSize = 18;
-fontPlus.onclick = ()=>{ fontSize = Math.min(24, fontSize+1); document.documentElement.style.setProperty('--base-font', fontSize+'px'); };
-fontMinus.onclick = ()=>{ fontSize = Math.max(16, fontSize-1); document.documentElement.style.setProperty('--base-font', fontSize+'px'); };
-contrast.onclick = ()=>{ document.body.classList.toggle('contrast-on'); };
+async function handleQuery(txt){
+live('Pensando…'); const res = await askLLM(txt); live(''); push('maia', res.say); speak(res.say); showSuggestions(res.suggestions||[]);
+}
 
-/* ========= Mensaje de bienvenida inicial ========= */
-addMsg("Hola, soy MAIA. Puedo ayudarte con trámites de salud en Pudahuel. Pregúntame lo que necesites o usa los atajos de abajo.","bot");
-setStatus('idle','En reposo. Toca “Iniciar” o haz una pregunta.');
+
+function showSuggestions(list){ const box = document.createElement('div'); box.className='row'; list.forEach((s)=>{ const b=document.createElement('button'); b.textContent=s; b.addEventListener('click',()=>{ push('me', s); handleQuery(s); }); box.appendChild(b); }); el('chatlog').appendChild(box); el('chatlog').scrollTop = el('chatlog').scrollHeight; }
+
+
+// Botones
+el('btnStart').onclick = ()=>{ push('maia', 'Hola, soy MAIA. ¿Qué necesitas de salud en Pudahuel? Puedo guiarte paso a paso.'); speak('Hola, soy MAIA. ¿Qué necesitas de salud en Pudahuel? Puedo guiarte paso a paso.'); };
+el('btnSpeak').onclick = ()=> listen();
+el('btnRepeat').onclick = ()=>{ const last = [...document.querySelectorAll('.bubble.maia')].pop(); if(last) speak(last.textContent); };
+el('btnStop').onclick = ()=>{ try{ window.speechSynthesis.cancel(); }catch(e){} };
+el('btnSend').onclick = ()=>{ const v=el('text').value.trim(); if(!v) return; push('me', v); el('text').value=''; handleQuery(v); };
+document.getElementById('shortcuts').addEventListener('click', (e)=>{ const p=e.target.getAttribute('data-prompt'); if(!p) return; push('me', p); handleQuery(p); });
+
+
+// Auto inicio por NFC/QR ?auto=1
+window.addEventListener('load', ()=>{ if(st.auto){ el('btnStart').click(); } });
 </script>
 </body>
 </html>
-
